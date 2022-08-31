@@ -18,10 +18,10 @@ var INPUT_MANAGER = (function () {
         this.target.addEventListener('mousedown', this.handlers.on_mousedown);
         this.target.addEventListener('mousemove', this.handlers.on_mousemove);
         this.target.addEventListener('mouseup', this.handlers.on_mouseup);
-        this.target.addEventListener('touchstart', this.handlers.on_touchstart);
-        this.target.addEventListener('touchend', this.handlers.on_touchend);
-        this.target.addEventListener('touchcancel', this.handlers.on_touchcancel);
-        this.target.addEventListener('touchmove', this.handlers.on_touchmove);
+        this.target.addEventListener('touchstart', this.handlers.on_touchstart, { passive: true });
+        this.target.addEventListener('touchend', this.handlers.on_touchend, { passive: true });
+        this.target.addEventListener('touchcancel', this.handlers.on_touchcancel, { passive: true });
+        this.target.addEventListener('touchmove', this.handlers.on_touchmove, { passive: true });
     }
     input_context.prototype.deinit = function () {
         this.target.removeEventListener('mousedown', this.handlers.on_mousedown);
