@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <style>
+        /* to remove the top and left whitespace */
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* just to be sure these are full screen*/
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* To remove the scrollbars */
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="ctx-holder" width="600" height="480" back></canvas>
+    <script>
+        (function () {
+            const canvas = document.getElementById('ctx-holder');
+            window.addEventListener('resize', resizeCanvas, false);
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resizeCanvas();
+        })();
+    </script>
+    <script src="input_manager.js"></script>
+    <script>
+        const el = document.getElementById('ctx-holder');
+
+        let debug_lines = [];
+        {
+            let IM = INPUT_MANAGER;
+            IM.sensitivity = 8;
+            IM.listen(el);
+            IM.add_listener(el, 'touchstart', function start_callback(e) {
+                console.log('start', e);
+            });
+            IM.add_listener(el, 'touchend', function end_callback(e) {
+                console.log('end', e);
+                debug_lines.push(e);
+            });
+            IM.add_listener(el, 'touched', function touched_callback(e) {
+                console.log('touch', e);
+            });
+        }
+
+        var ctx = el.getContext('2d');
+        setInterval(() => {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, el.width, el.height);
+
+            ctx.beginPath();
+            for (let i = 0; i < debug_lines.length; ++i) {
+                let line = debug_lines[i];
+                ctx.moveTo(line.start_x, line.start_y);
+                ctx.lineTo(line.x, line.y);
+            }
+            ctx.strokeStyle = '#ff0000';
+            ctx.stroke()
+        }, 1000 / 30);
+    </script>
+</body>
+
+</html>
