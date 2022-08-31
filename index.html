@@ -27,12 +27,12 @@
 <body>
     <canvas id="ctx-holder" width="1024" height="768"></canvas>
     <script src="gl-matrix-min.js"></script>
-    <script src="imr.js?v=2"></script>
+    <script src="imr.js"></script>
+    <script src="input_manager.js"></script>
     <!-- IMR test -->
     <script>
-        let canvas = document.getElementById('ctx-holder');
-        const ctx_holder = document.getElementById('ctx-holder');
-        const gl = ctx_holder.getContext('webgl', { premultipliedAlpha: false, alpha: false });
+        const canvas = document.getElementById('ctx-holder');
+        const gl = canvas.getContext('webgl', { premultipliedAlpha: false, alpha: false });
         console.assert(gl, 'unable to initialize webgl');
         IMR.initialize({
             gl: gl,
@@ -123,6 +123,18 @@
             }
         }
 
+        let follow_pos = [0, 0, 0];
+        {
+            let IM = INPUT_MANAGER;
+            IM.sensitivity = 8;
+            IM.listen(canvas);
+            IM.add_listener(canvas, 'moved', function start_callback(e) {
+                if (e.identifier != 0) return;
+                follow_pos[0] = e.x;
+                follow_pos[1] = canvas.height - e.y;
+            });
+        }
+
         function render() {
             IMR.begin_camera({
                 render_target: 'basic_draws',
@@ -139,7 +151,7 @@
                     // scale: [1, 1, 1],
                 });
 
-                IMR.begin_atlas({ texture_name: 'character', instance_count: 3 });
+                IMR.begin_atlas({ texture_name: 'character', instance_count: 4 });
                 {
                     // draw test
                     IMR.draw_atlas({
@@ -159,6 +171,13 @@
                     IMR.draw_atlas({
                         translate: [900, 300, 0],
                         scale: [200, 100, 1],
+                        rotation: 0,
+                    });
+
+                    // follow
+                    IMR.draw_atlas({
+                        translate: follow_pos,
+                        scale: [100, 100, 1],
                         rotation: 0,
                     });
                 }

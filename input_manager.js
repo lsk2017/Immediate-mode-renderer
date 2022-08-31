@@ -41,7 +41,7 @@ var INPUT_MANAGER = (function () {
             start_y: e.clientY
         };
         this.call_listeners('touchstart', {
-            identifier: 0,
+            identifier: e.buttons - 1,
             x: e.clientX,
             y: e.clientY
         }, e);
@@ -59,16 +59,16 @@ var INPUT_MANAGER = (function () {
             state.moved = true;
         }
         this.call_listeners('moved', {
-            identifier: 0,
-            e: e.clientX,
-            e: e.clientY
+            identifier: e.buttons - 1,
+            x: e.clientX,
+            y: e.clientY
         }, e);
     }
     input_context.prototype.on_mouseup = function (e) {
         e.preventDefault();
         let state = this.states[0];
         this.call_listeners('touchend', {
-            identifier: 0,
+            identifier: e.buttons - 1,
             start_x: state.start_x,
             start_y: state.start_y,
             x: e.clientX,
@@ -76,7 +76,7 @@ var INPUT_MANAGER = (function () {
         }, e);
         if (state.started && !state.moved) {
             this.call_listeners('touched', {
-                identifier: 0,
+                identifier: e.buttons - 1,
                 x: e.clientX,
                 y: e.clientY
             }, e);
