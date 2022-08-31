@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        * {
+            margin: 0px;
+            padding: 0px;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="ctx" width="640px" height="360px"></canvas>
+    <script>
+        function collider(pos, size, velocity) {
+            this.position = pos;
+            this.size = size;
+            this.velocity = velocity ? velocity : new point(0, 0);
+            this.angular_velocity = 0;
+            this.rotation = 0;
+        }
+
+        function point(x, y) {
+            this.x = x ? x : 0;
+            this.y = y ? y : 0;
+        }
+
+        point.prototype.add = function (o) {
+            return new point(this.x + o.x, this.y + o.y);
+        }
+
+        point.prototype.subtract = function (o) {
+            return new point(this.x - o.x, this.y - o.y);
+        }
+
+        point.prototype.scale = function (o) {
+            return new point(this.x * o, this.y * o);
+        }
+
+        point.prototype.length = function () {
+            return Math.sqrt(this.x * this.x + this.y * this.y);
+        }
+
+        point.prototype.dot = function (o) {
+            return this.x * o.x + this.y * o.y;
+        }
+
+        point.prototype.normalize = function () {
+            return this.scale(1 / this.length());
+        }
+
+        point.prototype.rotate = function (rot) {
+            let x = this.x * Math.cos(rot) - this.y * Math.sin(rot);
+            let y = this.x * Math.sin(rot) + this.y * Math.cos(rot);
+            return new point(x, y);
+        }
+
+        function edge(p0, p1) {
+            this.p0 = p0;
+            this.p1 = p1;
+        }
+
+        // init collider
+        var colliders = [
+            new collider(new point(100, 180), 20, new point(50, -80))
+            , new collider(new point(150, 180), 20, new point(50, -80))
+            , new collider(new point(200, 180), 20, new point(50, -80))
+            , new collider(new point(250, 180), 20, new point(50, -80))
+        ];
+        for (let i = 0; i < 20; ++i) {
+            colliders.push(new collider(new point(640 * Math.random(), 0), 20, new point()));
+        }
+
+        // init edges
+        var edges = [
+            new edge(new point(100, 300), new point(600, 50))
+            , new edge(new point(100, 50), new point(400, 300))
+        ];
+
+        // update
+        function update(delta) {
+            // saturate delta 60fps
+            delta = Math.min(delta, 1 / 60.0);
+
+            let gravity = new point(0, 50);
+            for (let i = 0; i < colliders.length; ++i) {
+                let c = colliders[i];
+                let half_size = c.size * 0.5;
+                // gravity
+                c.velocity = c.velocity.add(gravity.scale(delta));
+
+                // collide detection
+                for (let j = 0; j < edges.length; ++j) {
+                    let e = edges[j];
+                    let v_p1p0 = e.p1.subtract(e.p0);
+                    let l_p1p0 = v_p1p0.length();
+                    let v_cp0 = c.position.subtract(e.p0);
+                    let v_x = v_p1p0.scale(1 / l_p1p0).scale((v_cp0.dot(v_p1p0) / l_p1p0));
+                    let landed = v_p1p0.dot(v_x) / l_p1p0;
+                    if (landed < 0) {
+                        v_x = new point(0, 0);
+                    } else if (landed > l_p1p0) {
+                        v_x = v_p1p0;
+                    }
+                    let v_px = e.p0.add(v_x);
+                    let v_d = c.position.subtract(v_px);
+
+                    // decompose
+                    let v_ny = v_d.normalize();
+                    let v_nx = new point(v_ny.y, -v_ny.x).normalize();
+                    let l_nx = v_nx.dot(c.velocity);
+                    let l_ny = v_ny.dot(c.velocity);
+
+                    // detect collide
+                    let scaled_vel_y = v_ny.dot(c.velocity.scale(delta));
+                    if (v_d.length() + scaled_vel_y <= half_size) {
+                        // revert pass through
+                        c.position = c.position.add(v_ny.scale(half_size - v_d.length()));
+                        // reflection
+                        c.velocity = v_nx.scale(l_nx).add(v_ny.scale(-l_ny));
+                        // angular momentum
+                        c.angular_velocity = -l_nx * half_size * delta;
+                        // damping
+                        c.velocity = c.velocity.scale(0.99);
+                    }
+                }
+
+                // update position
+                c.position = c.position.add(c.velocity.scale(delta));
+
+                // update angular momentum
+                c.rotation += c.angular_velocity * delta;
+            }
+
+            // test update edges
+            // for (let i = 0; i < edges.length; ++i) {
+            //     edges[i].p0.x += 0.05;
+            //     edges[i].p1.x += 0.05;
+            // }
+        }
+
+        // draw
+        var cvs = document.getElementById("ctx");
+        var ctx = cvs.getContext('2d');
+        function draw() {
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+            // draw edges
+            ctx.beginPath();
+            for (let i = 0; i < edges.length; ++i) {
+                let e = edges[i];
+                ctx.moveTo(e.p0.x, e.p0.y);
+                ctx.lineTo(e.p1.x, e.p1.y);
+            }
+            ctx.stroke();
+
+            // draw collider
+            for (let i = 0; i < colliders.length; ++i) {
+                let c = colliders[i];
+                ctx.beginPath();
+                ctx.arc(c.position.x, c.position.y, c.size * 0.5, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.beginPath();
+
+                let dir = new point(1, 0).scale(c.size * 0.5).rotate(c.rotation);
+                let dir_e = c.position.add(dir);
+
+                ctx.moveTo(c.position.x, c.position.y);
+                ctx.lineTo(dir_e.x, dir_e.y);
+                ctx.stroke();
+            }
+        }
+
+        var prev = Date.now();
+        function tick() {
+            let now = Date.now();
+            update((now - prev) / 1000.0);
+            draw();
+            prev = now;
+        }
+
+        setInterval(tick, 0);
+    </script>
+</body>
+
+</html>

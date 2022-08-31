@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="ctx-holder" width="1024" height="768"></canvas>
+    <script src="gl-matrix-min.js"></script>
+    <script src="imr.js?v=3"></script>
+    <!-- IMR test -->
+    <script>
+        let canvas = document.getElementById('ctx-holder');
+        const ctx_holder = document.getElementById('ctx-holder');
+        const gl = ctx_holder.getContext('webgl', {premultipliedAlpha: false, alpha: false});
+        console.assert(gl, 'unable to initialize webgl');
+        IMR.initialize({
+            gl: gl,
+        });
+
+        IMR.load_textures(
+            [
+                {
+                    name: 'character',
+                    url: 'character.png'
+                },
+                {
+                    name: 'fox',
+                    url: 'fox_sheet.png'
+                },
+                {
+                    name: 'explode',
+                    url: 'explode.png'
+                }
+            ],
+        );
+
+        let fox = {
+            state: 0,
+            elapsed: 0,
+            texture_name: 'fox',
+            atlas_infoes: [
+                0, 0, 32, 32,
+                32, 0, 32, 32,
+            ],
+            rotation: 0,
+            rotation_speed: 15,
+        };
+
+        function explode() {
+            this.sprite_id = 0;
+            this.elapsed = 0;
+            this.translate = [0, 0];
+            this.scale = [128, 128];
+            this.rotation = 0;
+        };
+        explode.texture_name = 'explode';
+        explode.atlas_infoes = [];
+        explode.sheet_w = 8;
+        explode.sheet_h = 8;
+        explode.sheet_width = 2048;
+        explode.sheet_height = 2048;
+        explode.animation_speed = 1.0 / 30;
+        for (let i = 0; i < explode.sheet_w * explode.sheet_h; ++i) {
+            const w = (explode.sheet_width / explode.sheet_w);
+            const h = (explode.sheet_height / explode.sheet_h);
+            const xi = (i % explode.sheet_w);
+            const xj = Math.floor(i / explode.sheet_w);
+            const x = xi * w;
+            const y = (explode.sheet_h - xj - 1) * h;
+            explode.atlas_infoes.push(x, y, w, h);
+        }
+        let explodes = [];
+        for (let i = 0; i < 100; ++i) {
+            let e = new explode();
+            e.sprite_id = Math.floor(explode.sheet_w*explode.sheet_h*Math.random());
+            e.translate = [canvas.width * Math.random(), canvas.height * Math.random()];
+            explodes.push(e);
+        }
+
+        function update(dt) {
+            {
+                // update fox
+                const animation_speed = 0.7;
+                fox.elapsed += dt;
+                if (fox.elapsed >= animation_speed) {
+                    fox.state = fox.state == 0 ? 1 : 0;
+                    fox.elapsed -= animation_speed;
+                }
+                fox.rotation += fox.rotation_speed * dt * Math.PI / 180;
+            }
+
+            {
+                // update explodes
+                for (let i = 0; i < explodes.length; ++i) {
+                    let e = explodes[i];
+                    e.elapsed += dt;
+                    if (e.elapsed >= explode.animation_speed) {
+                        e.sprite_id = ++e.sprite_id % (explode.sheet_w * explode.sheet_h);
+                        e.elapsed -= explode.animation_speed;
+                    }
+                }
+            }
+        }
+
+        function render() {
+            IMR.begin_camera({
+                render_target: 'light',
+                clear_color: [0, 0, 0, 0],
+                mrt_count: 2,
+                // frame_width: canvas.width / 2,
+                // frame_height: canvas.height / 2,
+            });
+            {
+                IMR.point_light({
+                    inner_angle: 30,
+                    outer_angle: 45,
+                    inner_radius: 0,
+                    outer_radius: 300,
+                    falloff_intensity: 0.234,
+                    light_color: [1, 1, 0, 1],
+                    translate: [400, 400],
+                    segments: 72,
+                });
+            }
+            IMR.end_camera();
+
+            IMR.begin_camera({clear_color:[0, 0, 0, 1]});
+            {
+                IMR.draw_sprite({
+                    render_target: 'light',
+                    translate: [canvas.width / 2, canvas.height / 2],
+                    scale: [canvas.width, canvas.height],
+                });
+            }
+            IMR.end_camera();
+        }
+
+        let prev_time = Date.now();
+        let iid = setInterval(() => {
+            let now = Date.now();
+            const dt = (now - prev_time) / 1000;
+            prev_time = now;
+            update(dt);
+            try {
+                render();
+            } catch (e) {
+                console.error(e);
+                clearInterval(iid);
+            }
+        }, 1000 / 30);
+
+        function onresize(canvas) {
+            canvas.width = document.documentElement.clientWidth;
+            canvas.height = document.documentElement.clientHeight;
+            IMR.set_screen_size(canvas.width, canvas.height);
+        }
+        window.addEventListener('resize', onresize.bind(null, canvas));
+        onresize(canvas);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code == 'Space') {
+                clearInterval(iid);
+                IMR.destroy();
+                console.log(IMR);
+            }
+        }, false);
+    </script>
+    <!-- IMR test end -->
+</body>
+
+</html>
